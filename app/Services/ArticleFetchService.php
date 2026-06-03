@@ -33,24 +33,37 @@ class ArticleFetchService
     }
 
     /**
-     * Каждый час — по 1 новости с каждого сайта (полный текст + перевод).
+     * По 1 новости с пачки источников (ротация). Полный цикл ≈ ceil(N/batch) запусков.
      */
     public function fetchHourlyFromAllSources(): int
     {
-        $sources = config('football.sources', []);
-        if (empty($sources)) {
+        $enabled = $this->enabledSources();
+        if ($enabled === []) {
             return 0;
         }
 
-        $total = 0;
+        $batchSize = max(1, (int) config('football.article_fetch_batch_size', 6));
+        $statePath = storage_path('app/article-fetch-index.json');
+        $index = 0;
 
-        foreach ($sources as $source) {
-            if (! $this->isSourceEnabled($source)) {
-                continue;
+        if (is_file($statePath)) {
+            $raw = file_get_contents($statePath);
+            $data = $raw !== false ? json_decode($raw, true) : null;
+            if (is_array($data)) {
+                $index = max(0, (int) ($data['index'] ?? 0));
             }
+        }
 
+        $totalSources = count($enabled);
+        $index = $index % $totalSources;
+        $importedTotal = 0;
+        $processed = 0;
+
+        for ($i = 0; $i < $batchSize; $i++) {
+            $source = $enabled[($index + $i) % $totalSources];
             $count = $this->fetchFromSourceOrSkip($source, 1, true, true);
-            $total += $count;
+            $importedTotal += $count;
+            $processed++;
 
             if ($count > 0) {
                 Log::info('Hourly fetch from source', [
@@ -60,7 +73,35 @@ class ArticleFetchService
             }
         }
 
-        return $total;
+        $nextIndex = ($index + $processed) % $totalSources;
+        @mkdir(dirname($statePath), 0775, true);
+        file_put_contents($statePath, json_encode([
+            'index' => $nextIndex,
+            'updated_at' => date('c'),
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+
+        Log::info('Article fetch batch complete', [
+            'processed' => $processed,
+            'imported' => $importedTotal,
+            'next_index' => $nextIndex,
+            'total_sources' => $totalSources,
+        ]);
+
+        return $importedTotal;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function enabledSources(): array
+    {
+        $enabled = [];
+
+        foreach (config('football.sources', []) as $source) {
+            if ($this->isSourceEnabled($source)) {
+                $enabled[] = $source;
+            }
+        }
+
+        return $enabled;
     }
 
     /**

@@ -96,9 +96,12 @@ return [
     ],
 
     /*
-    | Каждый час articles:fetch-hourly берёт по 1 новости с каждого сайта.
+    | articles:fetch-hourly обрабатывает N источников за запуск (ротация).
+    | ~50 источников × (RSS + страница + перевод) не влезают в 120 с PHP — идём пачками.
     | lang: en | ru — язык исходного текста для перевода на казахский.
     */
+    'article_fetch_batch_size' => 6,
+
     'sources' => [
         // ——— Ағылшынша ———
         // BBC: с сервера KZ часто таймаут — включите enabled=true после стабильного канала
@@ -148,10 +151,12 @@ return [
             'rss_url' => 'https://www.uefa.com/rssfeed/news/rss.xml',
             'lang' => 'en',
         ],
+        // RSS 404
         [
             'name' => 'GOAL',
             'rss_url' => 'https://www.goal.com/feeds/en/news',
             'lang' => 'en',
+            'enabled' => false,
         ],
         [
             'name' => 'TalkSport',

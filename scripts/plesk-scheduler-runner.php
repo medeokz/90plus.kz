@@ -37,7 +37,7 @@ return function (string $root, string $providedKey): int {
         // fixtures-tracked отключён (нагрузка на API / 429)
         'world-cup' => ['type' => 'interval', 'seconds' => 1800],
         'standings' => ['type' => 'interval', 'seconds' => 1800],
-        'articles' => ['type' => 'interval', 'seconds' => 3600],
+        'articles' => ['type' => 'interval', 'seconds' => 600],
         'clubs-daily' => ['type' => 'daily', 'at' => '04:00', 'heavy' => true],
         'transfers' => ['type' => 'daily', 'at' => '06:00'],
     ];

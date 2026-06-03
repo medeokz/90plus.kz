@@ -3,9 +3,8 @@
 declare(strict_types=1);
 
 /**
- * One Plesk URL (every 2 min) runs all parsers when they are due.
- *
- * Intervals match routes/console.php (except fixtures-live — too heavy for shared hosting).
+ * One Plesk hit = at most ONE parser (avoids nginx 504).
+ * Response is sent immediately via fastcgi_finish_request when available.
  *
  * @return int exit code
  */
@@ -32,14 +31,14 @@ return function (string $root, string $providedKey): int {
         return 1;
     }
 
-    /** @var array<string, array{type: string, seconds?: int, at?: string}> */
+    /** @var array<string, array{type: string, seconds?: int, at?: string, heavy?: bool}> */
     $schedule = [
         'premier-liga' => ['type' => 'interval', 'seconds' => 120],
         'fixtures-tracked' => ['type' => 'interval', 'seconds' => 300],
         'world-cup' => ['type' => 'interval', 'seconds' => 900],
         'standings' => ['type' => 'interval', 'seconds' => 1800],
         'articles' => ['type' => 'interval', 'seconds' => 3600],
-        'clubs-daily' => ['type' => 'daily', 'at' => '04:00'],
+        'clubs-daily' => ['type' => 'daily', 'at' => '04:00', 'heavy' => true],
         'transfers' => ['type' => 'daily', 'at' => '06:00'],
     ];
 
@@ -48,7 +47,6 @@ return function (string $root, string $providedKey): int {
     $lockFile = $root.'/storage/app/plesk-scheduler.lock';
     $lockFp = fopen($lockFile, 'c');
     if ($lockFp === false || ! flock($lockFp, LOCK_EX | LOCK_NB)) {
-        $log('OK: previous scheduler tick still running');
         echo "scheduler: skip (already running)\n";
 
         return 0;
@@ -67,25 +65,26 @@ return function (string $root, string $providedKey): int {
     $state = $raw !== false && $raw !== '' ? (json_decode($raw, true) ?: []) : [];
 
     $now = time();
+    /** @var array<string, int> $due overdue seconds (higher = more urgent) */
     $due = [];
 
     foreach ($schedule as $jobId => $cfg) {
         if ($cfg['type'] === 'interval') {
             $last = (int) ($state[$jobId] ?? 0);
-            if ($now - $last >= $cfg['seconds']) {
-                $due[$jobId] = $now - $last;
+            $overdue = $now - $last - $cfg['seconds'];
+            if ($overdue >= 0) {
+                $due[$jobId] = $overdue;
             }
         } elseif ($cfg['type'] === 'daily') {
             $today = date('Y-m-d');
-            $doneKey = $jobId.'_date';
-            if (($state[$doneKey] ?? '') === $today) {
+            if (($state[$jobId.'_date'] ?? '') === $today) {
                 continue;
             }
             [$h, $m] = array_map('intval', explode(':', $cfg['at']));
             $nowMinutes = (int) date('G') * 60 + (int) date('i');
             $targetMinutes = $h * 60 + $m;
             if ($nowMinutes >= $targetMinutes) {
-                $due[$jobId] = $nowMinutes - $targetMinutes;
+                $due[$jobId] = 100000 + ($nowMinutes - $targetMinutes);
             }
         }
     }
@@ -93,40 +92,50 @@ return function (string $root, string $providedKey): int {
     if ($due === []) {
         flock($lockFp, LOCK_UN);
         fclose($lockFp);
-        $log('OK: nothing due');
-        echo "scheduler: nothing due at ".date('c')."\n";
+        echo "scheduler: nothing due\n";
 
         return 0;
     }
 
     arsort($due);
-    $runJob = require __DIR__.'/plesk-artisan-runner.php';
-    $failed = false;
+    $jobId = array_key_first($due);
 
-    foreach (array_keys($due) as $jobId) {
-        $log("--- running due job: {$jobId} ---");
-        [$code] = $runJob($root, $jobId, $providedKey);
+    echo "scheduler: starting {$jobId}\n";
 
-        if ($code !== 0) {
-            $failed = true;
-            $log("WARN: job {$jobId} failed, will retry next tick");
+    if (PHP_SAPI !== 'cli') {
+        @ini_set('max_execution_time', '0');
+        ignore_user_abort(true);
 
-            continue;
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            header('Connection: close');
+            header('Content-Length: '.strlen("scheduler: starting {$jobId}\n"));
+            if (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+            flush();
         }
+    }
 
+    $log("--- tick: {$jobId} ---");
+    $runJob = require __DIR__.'/plesk-artisan-runner.php';
+    [$code] = $runJob($root, $jobId, $providedKey);
+
+    if ($code === 0) {
         if ($schedule[$jobId]['type'] === 'daily') {
             $state[$jobId.'_date'] = date('Y-m-d');
         } else {
             $state[$jobId] = $now;
         }
-
         $saveState($state);
+        $log("OK: finished {$jobId}");
+    } else {
+        $log("WARN: {$jobId} failed (exit {$code})");
     }
 
     flock($lockFp, LOCK_UN);
     fclose($lockFp);
 
-    $log('--- scheduler tick done ---');
-
-    return $failed ? 1 : 0;
+    return $code === 0 ? 0 : 1;
 };

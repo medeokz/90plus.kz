@@ -24,6 +24,11 @@
 
 Проверка в браузере (один раз):
   https://90plus.kz/plesk-task.php?job=scheduler&key=KEY
+  Ответ сразу: "scheduler: starting premier-liga" — это норма.
+  Парсер дорабатывает в фоне; не ждите долгой загрузки страницы.
+
+504 Gateway Timeout: обновите scripts/plesk-scheduler-runner.php (git pull).
+  Scheduler запускает только ОДНУ задачу за вызов.
 
 Лог общий: storage/logs/cron-scheduler.log
 Логи задач: storage/logs/cron-articles.log и т.д.

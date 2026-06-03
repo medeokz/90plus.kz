@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Fixture;
 use App\Services\FixtureStatsService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
+use App\Support\ApiFootballClient;
 
 class SyncFixturesCommand extends Command
 {
@@ -59,9 +59,16 @@ class SyncFixturesCommand extends Command
 
     private function syncLive(FixtureStatsService $service): int
     {
-        $response = Http::timeout(20)
-            ->withHeaders(['x-apisports-key' => config('football.api_football_key')])
-            ->get('https://v3.football.api-sports.io/fixtures', ['live' => 'all']);
+        if (ApiFootballClient::isPaused()) {
+            $this->warn('API-Football paused (rate limit). Skipping live sync.');
+
+            return self::SUCCESS;
+        }
+
+        $response = ApiFootballClient::get(
+            'https://v3.football.api-sports.io/fixtures',
+            ['live' => 'all']
+        );
 
         $items = $response->json('response') ?? [];
         $count = 0;

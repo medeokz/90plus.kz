@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\ApiFootballClient;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class LeagueStandingsService
@@ -146,9 +146,10 @@ class LeagueStandingsService
     {
         return Cache::remember("league.season.{$leagueId}", 86400, function () use ($leagueId) {
             try {
-                $response = Http::timeout(20)
-                    ->withHeaders(['x-apisports-key' => config('football.api_football_key')])
-                    ->get('https://v3.football.api-sports.io/leagues', ['id' => $leagueId]);
+                $response = ApiFootballClient::get(
+                    'https://v3.football.api-sports.io/leagues',
+                    ['id' => $leagueId]
+                );
 
                 if (! $response->successful()) {
                     return null;
@@ -177,12 +178,17 @@ class LeagueStandingsService
     private function requestStandings(int $leagueId, int $season, int $attempt = 0): array
     {
         try {
-            $response = Http::timeout(20)
-                ->withHeaders(['x-apisports-key' => config('football.api_football_key')])
-                ->get('https://v3.football.api-sports.io/standings', [
+            if (ApiFootballClient::isPaused()) {
+                return [];
+            }
+
+            $response = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/standings',
+                [
                     'league' => $leagueId,
                     'season' => $season,
-                ]);
+                ]
+            );
 
             if (! $response->successful()) {
                 return [];

@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Support\ApiFootballClient;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class KzPremierLeagueService
@@ -72,7 +72,7 @@ class KzPremierLeagueService
         $leagueId = (int) ($this->leagueConfig()['api_id'] ?? $this->config()['api_league_id'] ?? 389);
         $targetSeason = $this->targetSeason();
 
-        if (! $apiKey || ! $leagueId) {
+        if (! $apiKey || ! $leagueId || ApiFootballClient::isPaused()) {
             return false;
         }
 
@@ -135,11 +135,14 @@ class KzPremierLeagueService
 
             $teamsSeason = $this->seasonsToTryForApi()[0];
 
-            $teamsResp = Http::timeout(25)->withHeaders($headers)
-                ->get('https://v3.football.api-sports.io/teams', [
+            $teamsResp = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/teams',
+                [
                     'league' => $leagueId,
                     'season' => $teamsSeason,
-                ]);
+                ],
+                25
+            );
 
             $teams = $teamsResp->json('response') ?? [];
 
@@ -235,8 +238,11 @@ class KzPremierLeagueService
      */
     private function requestApiFixtures(array $headers, array $params): array
     {
-        $response = Http::timeout(25)->withHeaders($headers)
-            ->get('https://v3.football.api-sports.io/fixtures', $params);
+        $response = ApiFootballClient::get(
+            'https://v3.football.api-sports.io/fixtures',
+            $params,
+            25
+        );
 
         if (! $response->successful()) {
             return [];
@@ -259,8 +265,10 @@ class KzPremierLeagueService
      */
     private function requestLiveLeagueFixtures(array $headers, int $leagueId): array
     {
-        $response = Http::timeout(20)->withHeaders($headers)
-            ->get('https://v3.football.api-sports.io/fixtures', ['live' => 'all']);
+        $response = ApiFootballClient::get(
+            'https://v3.football.api-sports.io/fixtures',
+            ['live' => 'all']
+        );
 
         if (! $response->successful()) {
             return [];

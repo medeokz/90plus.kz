@@ -33,9 +33,9 @@ return function (string $root, string $providedKey): int {
 
     /** @var array<string, array{type: string, seconds?: int, at?: string, heavy?: bool}> */
     $schedule = [
-        'premier-liga' => ['type' => 'interval', 'seconds' => 120],
-        'fixtures-tracked' => ['type' => 'interval', 'seconds' => 300],
-        'world-cup' => ['type' => 'interval', 'seconds' => 900],
+        'premier-liga' => ['type' => 'interval', 'seconds' => 300],
+        'fixtures-tracked' => ['type' => 'interval', 'seconds' => 900],
+        'world-cup' => ['type' => 'interval', 'seconds' => 1800],
         'standings' => ['type' => 'interval', 'seconds' => 1800],
         'articles' => ['type' => 'interval', 'seconds' => 3600],
         'clubs-daily' => ['type' => 'daily', 'at' => '04:00', 'heavy' => true],

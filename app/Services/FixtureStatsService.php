@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Fixture;
+use App\Support\ApiFootballClient;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class FixtureStatsService
@@ -122,8 +122,17 @@ class FixtureStatsService
         }
 
         $fixtures = $this->indexQuery()->get();
+        $maxRefreshes = (int) config('football.api_football_index_refresh_max', 3);
+        $refreshed = 0;
 
-        foreach ($fixtures as $fixture) {
+        $sorted = $fixtures->sortByDesc(fn (Fixture $f) => ($f->isLive() ? 100 : 0)
+            + ($f->kickoff_at && $f->kickoff_at->isFuture() && $f->kickoff_at->lte(now()->addHours(6)) ? 50 : 0));
+
+        foreach ($sorted as $fixture) {
+            if ($refreshed >= $maxRefreshes || ApiFootballClient::isPaused()) {
+                break;
+            }
+
             if ($fixture->api_fixture_id) {
                 $shouldForce = $aggressive && (
                     $fixture->isLive()
@@ -131,6 +140,7 @@ class FixtureStatsService
                 );
 
                 $this->refreshFromApiIfNeeded($fixture, $shouldForce);
+                $refreshed++;
             }
         }
 
@@ -191,11 +201,20 @@ class FixtureStatsService
             return;
         }
 
-        Cache::remember('fixtures.live_sync_lock', 45, function () use ($apiKey) {
+        Cache::remember('fixtures.live_sync_lock', 45, function () {
+            if (ApiFootballClient::isPaused()) {
+                return true;
+            }
+
             try {
-                $response = Http::timeout(20)
-                    ->withHeaders(['x-apisports-key' => $apiKey])
-                    ->get('https://v3.football.api-sports.io/fixtures', ['live' => 'all']);
+                $response = ApiFootballClient::get(
+                    'https://v3.football.api-sports.io/fixtures',
+                    ['live' => 'all']
+                );
+
+                if (! $response->successful()) {
+                    return true;
+                }
 
                 foreach ($response->json('response') ?? [] as $item) {
                     $apiId = $item['fixture']['id'] ?? null;
@@ -240,11 +259,15 @@ class FixtureStatsService
     /** @return array{fixture: array, statistics: array, events: array, lineups: array}|null */
     private function fetchFixtureBundle(int $apiFixtureId): ?array
     {
-        try {
-            $headers = ['x-apisports-key' => config('football.api_football_key')];
+        if (ApiFootballClient::isPaused()) {
+            return null;
+        }
 
-            $fixtureResp = Http::timeout(20)->withHeaders($headers)
-                ->get('https://v3.football.api-sports.io/fixtures', ['id' => $apiFixtureId]);
+        try {
+            $fixtureResp = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/fixtures',
+                ['id' => $apiFixtureId]
+            );
 
             if (! $fixtureResp->successful()) {
                 throw new \RuntimeException('HTTP '.$fixtureResp->status());
@@ -257,16 +280,30 @@ class FixtureStatsService
             }
 
             $status = $fixture['fixture']['status']['short'] ?? 'NS';
+            $needsDetail = in_array($status, ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'FT', 'AET', 'PEN'], true);
 
-            $stats = $this->fetchAllStatistics($apiFixtureId, $headers, $status);
+            $emptyStats = ['full' => [], 'first_half' => [], 'second_half' => []];
 
-            $events = Http::timeout(20)->withHeaders($headers)
-                ->get('https://v3.football.api-sports.io/fixtures/events', ['fixture' => $apiFixtureId])
-                ->json('response') ?? [];
+            if (! $needsDetail) {
+                return [
+                    'fixture' => $fixture,
+                    'statistics' => $emptyStats,
+                    'events' => [],
+                    'lineups' => [],
+                ];
+            }
 
-            $lineups = Http::timeout(20)->withHeaders($headers)
-                ->get('https://v3.football.api-sports.io/fixtures/lineups', ['fixture' => $apiFixtureId])
-                ->json('response') ?? [];
+            $stats = $this->fetchAllStatistics($apiFixtureId, $status);
+
+            $events = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/fixtures/events',
+                ['fixture' => $apiFixtureId]
+            )->json('response') ?? [];
+
+            $lineups = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/fixtures/lineups',
+                ['fixture' => $apiFixtureId]
+            )->json('response') ?? [];
 
             return [
                 'fixture' => $fixture,
@@ -275,21 +312,24 @@ class FixtureStatsService
                 'lineups' => $lineups,
             ];
         } catch (\Throwable $e) {
-            Log::warning('Fixture API fetch failed', ['api_id' => $apiFixtureId, 'error' => $e->getMessage()]);
+            if (! ApiFootballClient::isPaused()) {
+                Log::warning('Fixture API fetch failed', ['api_id' => $apiFixtureId, 'error' => $e->getMessage()]);
+            }
 
             return null;
         }
     }
 
     /** @return array{full: array, first_half: array, second_half: array} */
-    private function fetchAllStatistics(int $apiFixtureId, array $headers, string $status): array
+    private function fetchAllStatistics(int $apiFixtureId, string $status): array
     {
-        $fetch = fn (?string $half = null) => Http::timeout(20)->withHeaders($headers)
-            ->get('https://v3.football.api-sports.io/fixtures/statistics', array_filter([
+        $fetch = fn (?string $half = null) => ApiFootballClient::get(
+            'https://v3.football.api-sports.io/fixtures/statistics',
+            array_filter([
                 'fixture' => $apiFixtureId,
                 'half' => $half,
-            ]))
-            ->json('response') ?? [];
+            ])
+        )->json('response') ?? [];
 
         $full = $fetch();
         $firstHalf = [];

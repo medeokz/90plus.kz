@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Support\ApiFootballClient;
 use App\Support\NationalTeamFlags;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class WorldCupService
@@ -53,20 +53,22 @@ class WorldCupService
         $config = $this->config();
         $apiKey = config('football.api_football_key');
 
-        if (! $apiKey) {
+        if (! $apiKey || ApiFootballClient::isPaused()) {
             return false;
         }
 
         try {
-            $headers = ['x-apisports-key' => $apiKey];
             $leagueId = $config['api_league_id'];
             $season = $config['api_season'];
 
-            $fixturesResp = Http::timeout(30)->withHeaders($headers)
-                ->get('https://v3.football.api-sports.io/fixtures', [
+            $fixturesResp = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/fixtures',
+                [
                     'league' => $leagueId,
                     'season' => $season,
-                ]);
+                ],
+                30
+            );
 
             $errors = $fixturesResp->json('errors') ?? [];
             $apiFixtures = $fixturesResp->json('response') ?? [];
@@ -87,11 +89,13 @@ class WorldCupService
             Cache::put(self::CACHE_KEY.'.source', 'api', $this->cacheTtl());
             Cache::forget(self::CACHE_KEY.'.merged');
 
-            $standingsResp = Http::timeout(20)->withHeaders($headers)
-                ->get('https://v3.football.api-sports.io/standings', [
+            $standingsResp = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/standings',
+                [
                     'league' => $leagueId,
                     'season' => $season,
-                ]);
+                ]
+            );
 
             $standings = $standingsResp->json('response.0.league.standings') ?? [];
 

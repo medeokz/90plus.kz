@@ -7,6 +7,9 @@ return [
     'fetch_interval' => (int) env('ARTICLE_FETCH_INTERVAL', 60),
 
     'api_football_key' => env('API_FOOTBALL_KEY'),
+    'api_football_min_interval_ms' => (int) env('API_FOOTBALL_MIN_INTERVAL_MS', 400),
+    'api_football_pause_seconds' => (int) env('API_FOOTBALL_PAUSE_SECONDS', 600),
+    'api_football_index_refresh_max' => (int) env('API_FOOTBALL_INDEX_REFRESH_MAX', 3),
 
     'competitions' => [
         'world-cup-2026' => [
@@ -99,6 +102,7 @@ return [
             'name' => 'BBC Sport',
             'rss_url' => 'https://feeds.bbci.co.uk/sport/football/rss.xml',
             'lang' => 'en',
+            'rss_timeout' => 60,
         ],
         [
             'name' => 'The Guardian',
@@ -115,10 +119,12 @@ return [
             'rss_url' => 'https://www.espn.com/espn/rss/soccer/news',
             'lang' => 'en',
         ],
+        // Reuters feed discontinued (404) — re-enable when you have a working RSS URL
         [
             'name' => 'Reuters',
             'rss_url' => 'https://www.reutersagency.com/feed/?best-topics=sports&post_type=best',
             'lang' => 'en',
+            'enabled' => false,
         ],
         [
             'name' => 'CBS Sports',

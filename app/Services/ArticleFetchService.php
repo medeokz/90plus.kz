@@ -22,6 +22,10 @@ class ArticleFetchService
         $count = 0;
 
         foreach (config('football.sources', []) as $source) {
+            if (($source['enabled'] ?? true) === false) {
+                continue;
+            }
+
             try {
                 $count += $this->fetchFromSource($source, $limitPerSource, $fullContent);
             } catch (\Throwable $e) {
@@ -47,6 +51,10 @@ class ArticleFetchService
         $total = 0;
 
         foreach ($sources as $source) {
+            if (($source['enabled'] ?? true) === false) {
+                continue;
+            }
+
             try {
                 $count = $this->fetchFromSource($source, 1, true);
                 $total += $count;
@@ -74,7 +82,9 @@ class ArticleFetchService
             return $this->fetchFromSoccer365($source, $limit, '/\/press\/\d+\/?$/i');
         }
 
-        $response = Http::timeout(30)
+        $rssTimeout = (int) ($source['rss_timeout'] ?? 30);
+
+        $response = Http::timeout($rssTimeout)
             ->withHeaders(['User-Agent' => 'Mozilla/5.0 (compatible; FootballKZ/1.0)'])
             ->get($source['rss_url']);
 
@@ -95,8 +105,8 @@ class ArticleFetchService
                 break;
             }
 
-            $link = $this->extractLink($item);
-            if ($link === '' || Article::where('source_url', $link)->exists()) {
+            $link = $this->normalizeUrl($this->extractLink($item));
+            if ($link === '' || ! filter_var($link, FILTER_VALIDATE_URL) || Article::where('source_url', $link)->exists()) {
                 continue;
             }
 
@@ -225,6 +235,12 @@ class ArticleFetchService
 
     private function fetchFullArticle(string $url, string $lang = 'en'): array
     {
+        $url = $this->normalizeUrl($url);
+
+        if ($url === '' || ! filter_var($url, FILTER_VALIDATE_URL)) {
+            return ['content' => '', 'image' => null];
+        }
+
         try {
             $acceptLanguage = $lang === 'ru' ? 'ru-RU,ru;q=0.9' : 'en-US,en;q=0.9';
 
@@ -246,6 +262,11 @@ class ArticleFetchService
 
             return ['content' => '', 'image' => null];
         }
+    }
+
+    private function normalizeUrl(string $url): string
+    {
+        return preg_replace('/\s+/u', '', trim($url));
     }
 
     private function extractLink(\SimpleXMLElement $item): string

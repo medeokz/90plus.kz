@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\Fixture;
+use App\Support\ApiFootballClient;
 use App\Support\NationalTeamFlags;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class MatchSliderService
@@ -70,12 +70,18 @@ class MatchSliderService
             $from = now()->subDays(2)->format('Y-m-d');
             $to = now()->addDays(8)->format('Y-m-d');
 
-            $response = Http::timeout(25)
-                ->withHeaders(['x-apisports-key' => $apiKey])
-                ->get('https://v3.football.api-sports.io/fixtures', [
+            if (ApiFootballClient::isPaused()) {
+                return [];
+            }
+
+            $response = ApiFootballClient::get(
+                'https://v3.football.api-sports.io/fixtures',
+                [
                     'from' => $from,
                     'to' => $to,
-                ]);
+                ],
+                25
+            );
 
             if (! $response->successful()) {
                 return [];

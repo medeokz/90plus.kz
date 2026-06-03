@@ -1,29 +1,61 @@
-Plesk Scheduled Task — your panel runs PHP, NOT bash.
-Error "Could not open input file: /bin/bash ..." = wrong task type.
+WHY "File not found" on https://90plus.kz/plesk-deploy.php
+=============================================================
+1) Domain 90plus.kz not added in Plesk (only visitabay.kz works)
+2) Code not uploaded / git pull not done
+3) Wrong document root (httpdocs vs httpdocs/public)
 
-=== Step 1: Git pull (Plesk UI) ===
-Domains → 90plus.kz → Git → Pull
+STEP 1 — Find your real domain and path
+---------------------------------------
+Plesk → Files → find file "artisan"
+Example paths:
+  /var/www/vhosts/90plus.kz/httpdocs/artisan
+  /var/www/vhosts/visitabay.kz/httpdocs/artisan
 
-=== Step 2: .env ===
-Add line (generate random string):
-DEPLOY_KEY=MySecretKey12345ChangeThis
+STEP 2 — Test document root in browser
+---------------------------------------
+Try BOTH (replace domain):
 
-=== Step 3: Scheduled Task ===
-Type: "Run a PHP script" / "Выполнить PHP-скрипт"
+  https://90plus.kz/plesk-ping.php
+  https://90plus.kz/public/plesk-ping.php
 
-Script path (ONLY this path, no bash):
-/var/www/vhosts/90plus.kz/httpdocs/public/plesk-deploy.php
+  https://visitabay.kz/plesk-ping.php
+  https://visitabay.kz/public/plesk-ping.php
 
-Arguments / Parameters:
-MySecretKey12345ChangeThis
-(same value as DEPLOY_KEY in .env)
+If you see "OK-public" → docroot = public/
+If you see "OK-root" → docroot = httpdocs/
+If "File not found" → upload files or fix domain DNS/hosting
 
-=== Step 4: Log ===
-Read: httpdocs/storage/logs/cron-deploy.log
+STEP 3 — Deploy URL (after ping works)
+---------------------------------------
+If OK-public:
+  https://YOUR-DOMAIN/plesk-deploy.php?key=YOUR_DEPLOY_KEY
 
-=== Alternative: Fetch URL task ===
-Type: Fetch URL
-URL: https://90plus.kz/plesk-deploy.php?key=MySecretKey12345ChangeThis
+If OK-root only:
+  https://YOUR-DOMAIN/plesk-deploy.php?key=YOUR_DEPLOY_KEY
 
-=== Do NOT use ===
-Command: /bin/bash ...  (Plesk treats it as PHP file path)
+If only public/ works but URL without /public/ fails:
+  Plesk → Hosting → Document root → set to httpdocs/public
+
+STEP 4 — .env
+---------------------------------------
+DEPLOY_KEY=your-secret-same-as-in-url
+
+STEP 5 — Plesk Scheduled Task (PHP script, NOT bash)
+---------------------------------------
+Type: Run a PHP script
+
+If docroot = public:
+  Script: /var/www/vhosts/DOMAIN/httpdocs/public/plesk-deploy.php
+  Argument: your-secret
+
+If docroot = httpdocs:
+  Script: /var/www/vhosts/DOMAIN/httpdocs/plesk-deploy.php
+  Argument: your-secret
+
+OR Fetch URL:
+  https://YOUR-DOMAIN/plesk-deploy.php?key=your-secret
+
+STEP 6 — Log file (created after first successful run)
+---------------------------------------
+httpdocs/storage/logs/cron-deploy.log
+httpdocs/storage/logs/ping.log

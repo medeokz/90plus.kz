@@ -42,7 +42,9 @@ class ArticleFetchService
             return 0;
         }
 
-        $batchSize = max(1, (int) config('football.article_fetch_batch_size', 6));
+        $batchSize = max(1, (int) (
+            getenv('PLESK_CRON') ? config('football.article_fetch_batch_size_plesk', 1) : config('football.article_fetch_batch_size', 6)
+        ));
         $statePath = storage_path('app/article-fetch-index.json');
         $index = 0;
 
@@ -147,8 +149,14 @@ class ArticleFetchService
 
         $response = $this->fetchRss($source);
 
-        $xml = @simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
-        if ($xml === false) {
+        $xml = $this->parseRssXml($response->body());
+        if ($xml === null && ! empty($source['rss_url_fallback'])) {
+            $fallback = array_merge($source, ['rss_url' => $source['rss_url_fallback'], 'rss_url_fallback' => null]);
+            $response = $this->fetchRss($fallback);
+            $xml = $this->parseRssXml($response->body());
+        }
+
+        if ($xml === null) {
             throw new \RuntimeException('Invalid RSS XML');
         }
 
@@ -384,6 +392,27 @@ class ArticleFetchService
         }
 
         throw $lastError ?? new \RuntimeException('RSS fetch failed');
+    }
+
+    private function parseRssXml(string $body): ?\SimpleXMLElement
+    {
+        $body = ltrim($body, "\xEF\xBB\xBF \t\n\r\0\x0B");
+
+        $xml = @simplexml_load_string($body, 'SimpleXMLElement', LIBXML_NOCDATA);
+        if ($xml !== false) {
+            return $xml;
+        }
+
+        if (preg_match('/<rss[\s>]/i', $body) === 1 && class_exists(DOMDocument::class)) {
+            $dom = new DOMDocument;
+            if (@$dom->loadXML($body, LIBXML_NOCDATA | LIBXML_NOERROR)) {
+                $imported = simplexml_import_dom($dom);
+
+                return $imported instanceof \SimpleXMLElement ? $imported : null;
+            }
+        }
+
+        return null;
     }
 
     private function normalizeUrl(string $url): string

@@ -102,6 +102,9 @@ return [
     */
     'article_fetch_batch_size' => 6,
 
+    /** За один вызов plesk-task (HTTP cron) — 1 источник, иначе 504 */
+    'article_fetch_batch_size_plesk' => 1,
+
     /** Таймаут RSS по умолчанию (сек), если у источника нет rss_timeout */
     'article_fetch_rss_timeout' => 25,
 
@@ -128,7 +131,9 @@ return [
         [
             'name' => 'ESPN FC',
             'rss_url' => 'https://www.espn.com/espn/rss/soccer/news',
+            'rss_url_fallback' => 'https://www.espn.com/espn/rss/news',
             'lang' => 'en',
+            'rss_referer' => 'https://www.espn.com/',
         ],
         // Reuters feed discontinued (404) — re-enable when you have a working RSS URL
         [

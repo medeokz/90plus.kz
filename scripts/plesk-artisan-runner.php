@@ -68,6 +68,9 @@ return function (string $root, string $job, string $providedKey): array {
     [$command, $args] = $jobs[$job];
     $log("--- job start: {$job} → artisan {$command} ---");
 
+    putenv('PLESK_CRON=1');
+    $_ENV['PLESK_CRON'] = '1';
+
     @ini_set('max_execution_time', '0');
     @set_time_limit(0);
 

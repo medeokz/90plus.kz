@@ -18,6 +18,15 @@ if (isset($_GET['job']) && $_GET['job'] !== '') {
     $key = (string) ($_GET['key'] ?? '');
 
     if ($job === 'scheduler') {
+        $verify = require $root.'/scripts/plesk-verify-key.php';
+        $secret = $verify($root);
+        if ($secret === null || $secret === '' || ! hash_equals($secret, $key)) {
+            http_response_code(403);
+            echo "Forbidden\n";
+            exit(1);
+        }
+        $early = require $root.'/scripts/plesk-early-response.php';
+        $early("scheduler: accepted\n");
         $runner = $root.'/scripts/plesk-scheduler-runner.php';
         if (! is_file($runner)) {
             http_response_code(500);
@@ -27,6 +36,16 @@ if (isset($_GET['job']) && $_GET['job'] !== '') {
         $run = require $runner;
         exit($run($root, $key));
     }
+
+    $verify = require $root.'/scripts/plesk-verify-key.php';
+    $secret = $verify($root);
+    if ($secret === null || $secret === '' || ! hash_equals($secret, $key)) {
+        http_response_code(403);
+        echo "Forbidden\n";
+        exit(1);
+    }
+    $early = require $root.'/scripts/plesk-early-response.php';
+    $early("job: {$job} accepted\n");
 
     $runner = $root.'/scripts/plesk-artisan-runner.php';
     if (! is_file($runner)) {

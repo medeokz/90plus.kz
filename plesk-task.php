@@ -12,6 +12,15 @@ if (isset($_GET['job']) && $_GET['job'] !== '') {
     $key = (string) ($_GET['key'] ?? '');
 
     if ($job === 'scheduler') {
+        $verify = require $root.'/scripts/plesk-verify-key.php';
+        $secret = $verify($root);
+        if ($secret === null || $secret === '' || ! hash_equals($secret, $key)) {
+            http_response_code(403);
+            echo "Forbidden\n";
+            exit(1);
+        }
+        $early = require $root.'/scripts/plesk-early-response.php';
+        $early("scheduler: accepted\n");
         $runner = $root.'/scripts/plesk-scheduler-runner.php';
         if (! is_file($runner)) {
             http_response_code(500);
@@ -21,6 +30,16 @@ if (isset($_GET['job']) && $_GET['job'] !== '') {
         $run = require $runner;
         exit($run($root, $key));
     }
+
+    $verify = require $root.'/scripts/plesk-verify-key.php';
+    $secret = $verify($root);
+    if ($secret === null || $secret === '' || ! hash_equals($secret, $key)) {
+        http_response_code(403);
+        echo "Forbidden\n";
+        exit(1);
+    }
+    $early = require $root.'/scripts/plesk-early-response.php';
+    $early("job: {$job} accepted\n");
 
     $runner = $root.'/scripts/plesk-artisan-runner.php';
     if (! is_file($runner)) {
@@ -71,4 +90,5 @@ file_put_contents($root.'/storage/logs/ping.log', date('c')." plesk-task OK\n", 
 echo "OK laravel-root={$root}\n";
 echo "Deploy:       ?deploy=1&key=YOUR_KEY\n";
 echo "Config cache: ?refresh-config=1&key=YOUR_KEY\n";
+echo "DB check:      ?db-check=1&key=YOUR_KEY\n";
 echo "Scheduler:    ?job=scheduler&key=YOUR_KEY\n";

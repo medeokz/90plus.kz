@@ -100,22 +100,11 @@ return function (string $root, string $providedKey): int {
     arsort($due);
     $jobId = array_key_first($due);
 
-    echo "scheduler: starting {$jobId}\n";
-
     if (PHP_SAPI !== 'cli') {
-        @ini_set('max_execution_time', '0');
-        ignore_user_abort(true);
-
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        } else {
-            header('Connection: close');
-            header('Content-Length: '.strlen("scheduler: starting {$jobId}\n"));
-            if (ob_get_level() > 0) {
-                ob_end_flush();
-            }
-            flush();
-        }
+        $early = require __DIR__.'/plesk-early-response.php';
+        $early("scheduler: starting {$jobId}\n");
+    } else {
+        echo "scheduler: starting {$jobId}\n";
     }
 
     $log("--- tick: {$jobId} ---");

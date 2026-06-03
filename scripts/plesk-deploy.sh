@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Run on server as root or subscription user after uploading the project.
-# Requires PHP 8.2+ (Laravel 11). Plesk: set domain PHP to 8.3 before deploy.
+# Requires PHP 8.2+ and proc_open (Plesk often disables it by default).
 #
 # Usage:
 #   export DEPLOY_PATH=/var/www/vhosts/90plus.kz/httpdocs
+#   export PHP_BIN=/opt/plesk/php/8.3/bin/php
 #   bash scripts/plesk-deploy.sh
 
 set -euo pipefail
@@ -28,7 +29,6 @@ if [[ ! -f .env ]]; then
     exit 1
 fi
 
-# Prefer Plesk PHP 8.3/8.2 (CLI "php" is often 8.0 on Ubuntu)
 PHP_BIN="${PHP_BIN:-}"
 if [[ -z "$PHP_BIN" ]]; then
     for candidate in \
@@ -51,21 +51,52 @@ fi
 
 if [[ -z "$PHP_BIN" ]]; then
     echo "Error: PHP 8.2+ not found."
-    echo "In Plesk: Domains → 90plus.kz → PHP Settings → PHP 8.3 (plesk-php83-fpm)"
-    echo "Then run: export PHP_BIN=/opt/plesk/php/8.3/bin/php && bash scripts/plesk-deploy.sh"
+    echo "Plesk: Domains → 90plus.kz → PHP Settings → PHP 8.3"
     exit 1
 fi
 
 echo "Using PHP: $PHP_BIN ($("$PHP_BIN" -v | head -1))"
 
-export COMPOSER_ALLOW_SUPERUSER=1
-if [[ -f /usr/local/psa/var/modules/composer/composer.phar ]]; then
-    "$PHP_BIN" /usr/local/psa/var/modules/composer/composer.phar install --no-dev --optimize-autoloader --no-interaction
-elif command -v composer &>/dev/null; then
-    "$PHP_BIN" "$(command -v composer)" install --no-dev --optimize-autoloader --no-interaction
+has_proc_open() {
+    "$PHP_BIN" -r 'exit(function_exists("proc_open") ? 0 : 1);' 2>/dev/null
+}
+
+if ! has_proc_open; then
+    echo ""
+    echo "WARNING: proc_open is disabled in PHP."
+    echo "Plesk: Domains → 90plus.kz → PHP Settings →"
+    echo "  - remove proc_open from 'disable_functions', OR"
+    echo "  - Additional directives: disable_functions = (empty or without proc_open)"
+    echo ""
+    echo "Composer will run with --no-scripts until proc_open is enabled."
+    COMPOSER_EXTRA=(--no-scripts)
 else
-    echo "Error: composer not found"
-    exit 1
+    COMPOSER_EXTRA=()
+fi
+
+run_composer() {
+    export COMPOSER_ALLOW_SUPERUSER=1
+    if [[ -f /usr/local/psa/var/modules/composer/composer.phar ]]; then
+        "$PHP_BIN" /usr/local/psa/var/modules/composer/composer.phar "$@"
+    elif command -v composer &>/dev/null; then
+        "$PHP_BIN" "$(command -v composer)" "$@"
+    else
+        echo "Error: composer not found"
+        exit 1
+    fi
+}
+
+run_composer install --no-dev --optimize-autoloader --no-interaction "${COMPOSER_EXTRA[@]}"
+
+if has_proc_open; then
+    "$PHP_BIN" artisan package:discover --ansi 2>/dev/null || true
+    "$PHP_BIN" artisan filament:upgrade 2>/dev/null || true
+else
+    echo ""
+    echo "After enabling proc_open, run:"
+    echo "  $PHP_BIN artisan package:discover --ansi"
+    echo "  $PHP_BIN artisan filament:upgrade"
+    echo ""
 fi
 
 "$PHP_BIN" artisan storage:link --force 2>/dev/null || true
@@ -77,5 +108,5 @@ fi
 
 chmod -R ug+rwx storage bootstrap/cache
 
-echo "Done. Document root must be: $DEPLOY_PATH/public"
+echo "Done. Document root: $DEPLOY_PATH/public"
 echo "Cron: * * * * * $PHP_BIN $DEPLOY_PATH/artisan schedule:run >> /dev/null 2>&1"

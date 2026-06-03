@@ -29,6 +29,7 @@
 .env.production
 .phpunit.result.cache
 /tmp_*.php
+*.zip
 Homestead.json
 Homestead.yaml
 auth.json

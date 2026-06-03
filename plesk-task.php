@@ -44,9 +44,21 @@ if (isset($_GET['deploy']) && (string) $_GET['deploy'] === '1') {
     exit($run($root));
 }
 
+if (isset($_GET['refresh-config']) && (string) $_GET['refresh-config'] === '1') {
+    $runner = $root.'/scripts/plesk-config-refresh.php';
+    if (! is_file($runner)) {
+        http_response_code(500);
+        echo "ERROR: missing scripts/plesk-config-refresh.php\n";
+        exit(1);
+    }
+    $run = require $runner;
+    exit($run($root));
+}
+
 @mkdir($root.'/storage/logs', 0775, true);
 file_put_contents($root.'/storage/logs/ping.log', date('c')." plesk-task OK\n", FILE_APPEND);
 
 echo "OK laravel-root={$root}\n";
-echo "Deploy:    ?deploy=1&key=YOUR_KEY\n";
-echo "Scheduler: ?job=scheduler&key=YOUR_KEY\n";
+echo "Deploy:       ?deploy=1&key=YOUR_KEY\n";
+echo "Config cache: ?refresh-config=1&key=YOUR_KEY\n";
+echo "Scheduler:    ?job=scheduler&key=YOUR_KEY\n";

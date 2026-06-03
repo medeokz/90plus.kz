@@ -401,6 +401,14 @@
 }
 
 @media (max-width: 640px) {
+    .fixture-page--list {
+        padding: 16px 0 32px;
+    }
+
+    .fixture-list-heading {
+        font-size: 1.15rem;
+    }
+
     .fixture-row {
         grid-template-columns: 72px minmax(0, 1fr) auto minmax(0, 1fr) 44px;
         gap: 6px;
@@ -416,6 +424,15 @@
         font-size: 0.875rem;
         padding: 2px 6px;
         min-width: 38px;
+    }
+
+    .fixture-info-list {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .fixture-info-list dt {
+        margin-top: 8px;
     }
 }
 

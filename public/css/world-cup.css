@@ -388,6 +388,20 @@
     .wc-group-table-wrap,
     .wc-third-place {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .wc-group-table,
+    .wc-third-place .league-table {
+        min-width: 480px;
+    }
+
+    .wc-title {
+        font-size: 1.5rem;
+    }
+
+    .wc-meta-card {
+        padding: 14px;
     }
 
     .wc-fixture-teams {

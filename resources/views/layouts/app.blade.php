@@ -15,11 +15,17 @@
         <div class="container header-inner">
             @include('partials.logo')
 
-            <nav>
+            <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Мәзірді ашу">
+                <span class="nav-toggle__bar" aria-hidden="true"></span>
+                <span class="nav-toggle__bar" aria-hidden="true"></span>
+                <span class="nav-toggle__bar" aria-hidden="true"></span>
+            </button>
+
+            <nav id="site-nav" class="site-nav" aria-label="Негізгі мәзір">
                 <ul class="main-nav">
                     <li><a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">Басты бет</a></li>
                     <li><a href="{{ route('fixtures.index') }}" class="{{ request()->routeIs('fixtures.*') ? 'active' : '' }}">Матчтар</a></li>
-                    <li><a href="{{ route('clubs.index') }}" class="{{ request()->routeIs('clubs.*') ? 'active' : '' }}">Клубтар</a></li>
+                    <li><a href="{{ route('clubs.index') }}" class="{{ request()->routeIs('clubs.*', 'countries.*') ? 'active' : '' }}">Клубтар</a></li>
                     <li><a href="{{ route('transfers.index') }}" class="{{ request()->routeIs('transfers.*') ? 'active' : '' }}">Трансферлер</a></li>
                     <li><a href="{{ route('premier-liga.tournament') }}" class="{{ request()->routeIs('premier-liga.*') ? 'active' : '' }}">Премьер-лига</a></li>
                     <li><a href="{{ route('world-cup.tournament') }}" class="{{ request()->routeIs('world-cup.*') ? 'active' : '' }}">ӘЧ 2026</a></li>
@@ -59,6 +65,7 @@
         </div>
     </footer>
 
+    <script src="{{ asset('js/site.js') }}" defer></script>
     @stack('scripts')
 </body>
 </html>

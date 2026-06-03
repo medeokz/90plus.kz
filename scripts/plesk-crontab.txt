@@ -1,0 +1,28 @@
+# Plesk → 90plus.kz → Scheduled Tasks (when proc_open is disabled)
+# Use full path to PHP 8.3. Replace user path if different.
+
+# Every minute — NOT schedule:run (needs proc_open). Run tasks separately:
+
+# Articles (hourly at :00)
+0 * * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan articles:fetch-hourly >> /dev/null 2>&1
+
+# Clubs daily (04:00)
+0 4 * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan clubs:sync-daily --batch=15 >> /var/www/vhosts/90plus.kz/httpdocs/storage/logs/clubs-sync-daily.log 2>&1
+
+# Standings (every 30 min)
+*/30 * * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan standings:fetch >> /dev/null 2>&1
+
+# World cup (every 15 min)
+*/15 * * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan world-cup:sync >> /dev/null 2>&1
+
+# KZ premier (every 2 min — reduce if heavy)
+*/2 * * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan premier-liga:sync >> /dev/null 2>&1
+
+# Live fixtures (every minute)
+* * * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan fixtures:sync --live >> /dev/null 2>&1
+
+# Tracked fixtures (every 5 min)
+*/5 * * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan fixtures:sync --tracked >> /dev/null 2>&1
+
+# Transfers (06:00)
+0 6 * * * /opt/plesk/php/8.3/bin/php /var/www/vhosts/90plus.kz/httpdocs/artisan transfers:sync >> /dev/null 2>&1

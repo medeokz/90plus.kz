@@ -3,9 +3,9 @@
 # Logs: storage/logs/cron-deploy.log
 #
 # Plesk command field (one line):
-# /bin/bash /var/www/vhosts/90plus.kz/httpdocs/scripts/plesk-cron-deploy.sh
+# /bin/bash /var/www/vhosts/018.kz/90plus.kz/scripts/plesk-cron-deploy.sh
 
-DEPLOY="/var/www/vhosts/90plus.kz/httpdocs"
+DEPLOY="/var/www/vhosts/018.kz/90plus.kz"
 PHP="/opt/plesk/php/8.3/bin/php"
 LOG="$DEPLOY/storage/logs/cron-deploy.log"
 

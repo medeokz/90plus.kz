@@ -5,7 +5,7 @@
  * URL: https://YOUR-DOMAIN/plesk-deploy.php?key=DEPLOY_KEY
  *
  * Plesk cron "Run PHP script":
- * /var/www/vhosts/90plus.kz/httpdocs/public/plesk-deploy.php
+ * /var/www/vhosts/018.kz/90plus.kz/public/plesk-deploy.php
  */
 
 declare(strict_types=1);

@@ -7,9 +7,9 @@ WHY "File not found" on https://90plus.kz/plesk-deploy.php
 STEP 1 — Find your real domain and path
 ---------------------------------------
 Plesk → Files → find file "artisan"
-Example paths:
-  /var/www/vhosts/90plus.kz/httpdocs/artisan
-  /var/www/vhosts/visitabay.kz/httpdocs/artisan
+Example paths (your server):
+  /var/www/vhosts/018.kz/90plus.kz/artisan
+  Document root is often the project root (OK-root on plesk-ping.php)
 
 STEP 2 — Test document root in browser
 ---------------------------------------
@@ -45,11 +45,10 @@ STEP 5 — Plesk Scheduled Task (PHP script, NOT bash)
 Type: Run a PHP script
 
 If docroot = public:
-  Script: /var/www/vhosts/DOMAIN/httpdocs/public/plesk-deploy.php
-  Argument: your-secret
+  Script: /var/www/vhosts/018.kz/90plus.kz/public/plesk-deploy.php
 
-If docroot = httpdocs:
-  Script: /var/www/vhosts/DOMAIN/httpdocs/plesk-deploy.php
+If docroot = project root (OK-root on ping):
+  Script: /var/www/vhosts/018.kz/90plus.kz/plesk-deploy.php
   Argument: your-secret
 
 OR Fetch URL:

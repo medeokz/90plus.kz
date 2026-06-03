@@ -22,7 +22,7 @@ class ArticleFetchService
         $count = 0;
 
         foreach (config('football.sources', []) as $source) {
-            if (($source['enabled'] ?? true) === false) {
+            if (! $this->isSourceEnabled($source)) {
                 continue;
             }
 
@@ -51,7 +51,7 @@ class ArticleFetchService
         $total = 0;
 
         foreach ($sources as $source) {
-            if (($source['enabled'] ?? true) === false) {
+            if (! $this->isSourceEnabled($source)) {
                 continue;
             }
 
@@ -82,15 +82,7 @@ class ArticleFetchService
             return $this->fetchFromSoccer365($source, $limit, '/\/press\/\d+\/?$/i');
         }
 
-        $rssTimeout = (int) ($source['rss_timeout'] ?? 30);
-
-        $response = Http::timeout($rssTimeout)
-            ->withHeaders(['User-Agent' => 'Mozilla/5.0 (compatible; FootballKZ/1.0)'])
-            ->get($source['rss_url']);
-
-        if (! $response->successful()) {
-            throw new \RuntimeException('RSS fetch failed: '.$response->status());
-        }
+        $response = $this->fetchRss($source);
 
         $xml = @simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
         if ($xml === false) {
@@ -262,6 +254,43 @@ class ArticleFetchService
 
             return ['content' => '', 'image' => null];
         }
+    }
+
+    private function isSourceEnabled(array $source): bool
+    {
+        if (($source['enabled'] ?? true) === false) {
+            return false;
+        }
+
+        $blocked = config('football.disabled_source_names', ['Reuters']);
+
+        return ! in_array($source['name'] ?? '', $blocked, true);
+    }
+
+    private function fetchRss(array $source): \Illuminate\Http\Client\Response
+    {
+        $url = $source['rss_url'] ?? '';
+        $timeout = (int) ($source['rss_timeout'] ?? 60);
+        $lastError = null;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $response = Http::timeout($attempt === 1 ? $timeout : $timeout + 30)
+                    ->connectTimeout(20)
+                    ->withHeaders(['User-Agent' => 'Mozilla/5.0 (compatible; FootballKZ/1.0)'])
+                    ->get($url);
+
+                if ($response->successful()) {
+                    return $response;
+                }
+
+                $lastError = new \RuntimeException('RSS fetch failed: '.$response->status());
+            } catch (\Throwable $e) {
+                $lastError = $e;
+            }
+        }
+
+        throw $lastError ?? new \RuntimeException('RSS fetch failed');
     }
 
     private function normalizeUrl(string $url): string

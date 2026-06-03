@@ -11,6 +11,9 @@ return [
     'api_football_pause_seconds' => (int) env('API_FOOTBALL_PAUSE_SECONDS', 600),
     'api_football_index_refresh_max' => (int) env('API_FOOTBALL_INDEX_REFRESH_MAX', 3),
 
+    /** Имена источников, которые cron новостей пропускает (даже если в кэше старый config). */
+    'disabled_source_names' => ['Reuters'],
+
     'competitions' => [
         'world-cup-2026' => [
             'key' => 'world-cup-2026',
@@ -98,11 +101,13 @@ return [
     */
     'sources' => [
         // ——— Ағылшынша ———
+        // BBC: с сервера KZ часто таймаут — включите enabled=true после стабильного канала
         [
             'name' => 'BBC Sport',
             'rss_url' => 'https://feeds.bbci.co.uk/sport/football/rss.xml',
             'lang' => 'en',
-            'rss_timeout' => 60,
+            'rss_timeout' => 90,
+            'enabled' => false,
         ],
         [
             'name' => 'The Guardian',

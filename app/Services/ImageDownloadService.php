@@ -39,7 +39,9 @@ class ImageDownloadService
                 ->get($url);
 
             if (! $response->successful()) {
-                Log::warning('Image download failed', ['url' => $url, 'status' => $response->status()]);
+                if (! $this->shouldSilenceImageFailure($url, $response->status())) {
+                    Log::warning('Image download failed', ['url' => $url, 'status' => $response->status()]);
+                }
 
                 return null;
             }
@@ -113,6 +115,16 @@ class ImageDownloadService
         }
 
         return $url;
+    }
+
+    private function shouldSilenceImageFailure(string $url, int $status): bool
+    {
+        if (! in_array($status, [401, 403], true)) {
+            return false;
+        }
+
+        return str_contains($url, 'i.guim.co.uk')
+            || str_contains($url, 'guim.co.uk');
     }
 
     private function detectExtension(string $url, ?string $contentType): string

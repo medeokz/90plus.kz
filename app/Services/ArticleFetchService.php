@@ -26,13 +26,7 @@ class ArticleFetchService
                 continue;
             }
 
-            try {
-                $count += $this->fetchFromSource($source, $limitPerSource, $fullContent);
-            } catch (\Throwable $e) {
-                Log::error('Failed to fetch from '.$source['name'], [
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $count += $this->fetchFromSourceOrSkip($source, $limitPerSource, $fullContent);
         }
 
         return $count;
@@ -55,22 +49,43 @@ class ArticleFetchService
                 continue;
             }
 
-            try {
-                $count = $this->fetchFromSource($source, 1, true);
-                $total += $count;
+            $count = $this->fetchFromSourceOrSkip($source, 1, true, true);
+            $total += $count;
 
+            if ($count > 0) {
                 Log::info('Hourly fetch from source', [
                     'source' => $source['name'],
                     'imported' => $count,
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('Hourly fetch failed for '.$source['name'], [
-                    'error' => $e->getMessage(),
                 ]);
             }
         }
 
         return $total;
+    }
+
+    /**
+     * Один источник: при любой ошибке — warning, 0 импортов, следующий источник в цикле.
+     */
+    private function fetchFromSourceOrSkip(array $source, int $limit, bool $fullContent, bool $hourlyLog = false): int
+    {
+        try {
+            return $this->fetchFromSource($source, $limit, $fullContent);
+        } catch (\Throwable $e) {
+            Log::warning('Article source skipped, continuing', [
+                'source' => $source['name'],
+                'error' => $e->getMessage(),
+            ]);
+
+            if ($hourlyLog) {
+                Log::info('Hourly fetch from source', [
+                    'source' => $source['name'],
+                    'imported' => 0,
+                    'skipped' => true,
+                ]);
+            }
+
+            return 0;
+        }
     }
 
     public function fetchFromSource(array $source, int $limit = 1, bool $fullContent = false): int
@@ -97,59 +112,72 @@ class ArticleFetchService
                 break;
             }
 
-            $link = $this->normalizeUrl($this->extractLink($item));
-            if ($link === '' || ! filter_var($link, FILTER_VALIDATE_URL) || Article::where('source_url', $link)->exists()) {
-                continue;
-            }
-
-            $titleEn = html_entity_decode(strip_tags((string) ($item->title ?? '')), ENT_QUOTES, 'UTF-8');
-            $summaryEn = $this->extractSummary($item);
-            $publishedAt = $this->extractPublishedAt($item);
-            $imageUrl = $this->extractImage($item);
-
-            $contentEn = $summaryEn;
-            if ($fullContent) {
-                $parsed = $this->fetchFullArticle($link, $source['lang'] ?? 'en');
-                if ($parsed['content'] !== '') {
-                    $contentEn = $parsed['content'];
+            try {
+                if ($this->importRssItem($source, $item, $fullContent)) {
+                    $count++;
                 }
-                // og:image со страницы — обычно оригинал, приоритетнее RSS-миниатюры
-                if ($parsed['image'] !== null) {
-                    $imageUrl = $parsed['image'];
-                }
+            } catch (\Throwable $e) {
+                Log::warning('Article item skipped', [
+                    'source' => $source['name'],
+                    'error' => $e->getMessage(),
+                ]);
             }
-
-            $localImage = $this->imageDownloader->download($imageUrl, $link);
-            if ($localImage !== null) {
-                $imageUrl = $localImage;
-            }
-
-            $sourceLang = $source['lang'] ?? 'en';
-
-            $titleKk = $this->translator->toKazakh($titleEn, $sourceLang);
-            $summaryKk = $this->translator->toKazakh(Str::limit(strip_tags($contentEn), 500), $sourceLang);
-            $contentKk = $this->translator->toKazakhFormatted($contentEn, $sourceLang);
-
-            Article::create([
-                'title_en' => $titleEn,
-                'title_kk' => $titleKk ?: $titleEn,
-                'summary_en' => Str::limit($summaryEn, 500),
-                'summary_kk' => $summaryKk ?: Str::limit($summaryEn, 500),
-                'content_en' => $contentEn,
-                'content_kk' => $contentKk ?: $contentEn,
-                'source_url' => $link,
-                'source_name' => $source['name'],
-                'image_url' => $imageUrl,
-                'slug' => Article::generateSlug($titleKk ?: $titleEn),
-                'published_at' => $publishedAt,
-                'status' => 'published',
-                'fetched_at' => now(),
-            ]);
-
-            $count++;
         }
 
         return $count;
+    }
+
+    private function importRssItem(array $source, \SimpleXMLElement $item, bool $fullContent): bool
+    {
+        $link = $this->normalizeUrl($this->extractLink($item));
+        if ($link === '' || ! filter_var($link, FILTER_VALIDATE_URL) || Article::where('source_url', $link)->exists()) {
+            return false;
+        }
+
+        $titleEn = html_entity_decode(strip_tags((string) ($item->title ?? '')), ENT_QUOTES, 'UTF-8');
+        $summaryEn = $this->extractSummary($item);
+        $publishedAt = $this->extractPublishedAt($item);
+        $imageUrl = $this->extractImage($item);
+
+        $contentEn = $summaryEn;
+        if ($fullContent) {
+            $parsed = $this->fetchFullArticle($link, $source['lang'] ?? 'en');
+            if ($parsed['content'] !== '') {
+                $contentEn = $parsed['content'];
+            }
+            if ($parsed['image'] !== null) {
+                $imageUrl = $parsed['image'];
+            }
+        }
+
+        $localImage = $this->imageDownloader->download($imageUrl, $link);
+        if ($localImage !== null) {
+            $imageUrl = $localImage;
+        }
+
+        $sourceLang = $source['lang'] ?? 'en';
+
+        $titleKk = $this->translator->toKazakh($titleEn, $sourceLang);
+        $summaryKk = $this->translator->toKazakh(Str::limit(strip_tags($contentEn), 500), $sourceLang);
+        $contentKk = $this->translator->toKazakhFormatted($contentEn, $sourceLang);
+
+        Article::create([
+            'title_en' => $titleEn,
+            'title_kk' => $titleKk ?: $titleEn,
+            'summary_en' => Str::limit($summaryEn, 500),
+            'summary_kk' => $summaryKk ?: Str::limit($summaryEn, 500),
+            'content_en' => $contentEn,
+            'content_kk' => $contentKk ?: $contentEn,
+            'source_url' => $link,
+            'source_name' => $source['name'],
+            'image_url' => $imageUrl,
+            'slug' => Article::generateSlug($titleKk ?: $titleEn),
+            'published_at' => $publishedAt,
+            'status' => 'published',
+            'fetched_at' => now(),
+        ]);
+
+        return true;
     }
 
     private function fetchFromSoccer365(array $source, int $limit = 1, string $pathPattern = '/\/news\/\d+\/?$/i'): int
@@ -175,51 +203,59 @@ class ArticleFetchService
                 continue;
             }
 
-            $articleResponse = Http::timeout(45)
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept' => 'text/html,application/xhtml+xml',
-                    'Accept-Language' => 'ru-RU,ru;q=0.9',
-                ])
-                ->get($link);
+            try {
+                $articleResponse = Http::timeout(45)
+                    ->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept' => 'text/html,application/xhtml+xml',
+                        'Accept-Language' => 'ru-RU,ru;q=0.9',
+                    ])
+                    ->get($link);
 
-            if (! $articleResponse->successful()) {
-                continue;
+                if (! $articleResponse->successful()) {
+                    continue;
+                }
+
+                $html = $articleResponse->body();
+                $titleRu = $this->extractTitleFromHtml($html) ?? 'Soccer365';
+                $parsed = $this->parseSoccer365Article($html, $link);
+                $contentRu = $parsed['content'] !== '' ? $parsed['content'] : $titleRu;
+                $summaryRu = Str::limit(strip_tags($contentRu), 500);
+                $imageUrl = $parsed['image'];
+
+                $localImage = $this->imageDownloader->download($imageUrl, $link);
+                if ($localImage !== null) {
+                    $imageUrl = $localImage;
+                }
+
+                $titleKk = $this->translator->toKazakh($titleRu, $sourceLang);
+                $summaryKk = $this->translator->toKazakh($summaryRu, $sourceLang);
+                $contentKk = $this->translator->toKazakhFormatted($contentRu, $sourceLang);
+
+                Article::create([
+                    'title_en' => $titleRu,
+                    'title_kk' => $titleKk ?: $titleRu,
+                    'summary_en' => $summaryRu,
+                    'summary_kk' => $summaryKk ?: $summaryRu,
+                    'content_en' => $contentRu,
+                    'content_kk' => $contentKk ?: $contentRu,
+                    'source_url' => $link,
+                    'source_name' => $source['name'],
+                    'image_url' => $imageUrl,
+                    'slug' => Article::generateSlug($titleKk ?: $titleRu),
+                    'published_at' => now(),
+                    'status' => 'published',
+                    'fetched_at' => now(),
+                ]);
+
+                $count++;
+            } catch (\Throwable $e) {
+                Log::warning('Article item skipped', [
+                    'source' => $source['name'],
+                    'url' => $link,
+                    'error' => $e->getMessage(),
+                ]);
             }
-
-            $html = $articleResponse->body();
-            $titleRu = $this->extractTitleFromHtml($html) ?? 'Soccer365';
-            $parsed = $this->parseSoccer365Article($html, $link);
-            $contentRu = $parsed['content'] !== '' ? $parsed['content'] : $titleRu;
-            $summaryRu = Str::limit(strip_tags($contentRu), 500);
-            $imageUrl = $parsed['image'];
-
-            $localImage = $this->imageDownloader->download($imageUrl, $link);
-            if ($localImage !== null) {
-                $imageUrl = $localImage;
-            }
-
-            $titleKk = $this->translator->toKazakh($titleRu, $sourceLang);
-            $summaryKk = $this->translator->toKazakh($summaryRu, $sourceLang);
-            $contentKk = $this->translator->toKazakhFormatted($contentRu, $sourceLang);
-
-            Article::create([
-                'title_en' => $titleRu,
-                'title_kk' => $titleKk ?: $titleRu,
-                'summary_en' => $summaryRu,
-                'summary_kk' => $summaryKk ?: $summaryRu,
-                'content_en' => $contentRu,
-                'content_kk' => $contentKk ?: $contentRu,
-                'source_url' => $link,
-                'source_name' => $source['name'],
-                'image_url' => $imageUrl,
-                'slug' => Article::generateSlug($titleKk ?: $titleRu),
-                'published_at' => now(),
-                'status' => 'published',
-                'fetched_at' => now(),
-            ]);
-
-            $count++;
         }
 
         return $count;

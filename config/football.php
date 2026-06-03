@@ -136,10 +136,12 @@ return [
             'rss_url' => 'https://www.cbssports.com/rss/headlines/soccer',
             'lang' => 'en',
         ],
+        // RSS 404 — включите, когда появится рабочий feed
         [
             'name' => 'Premier League',
             'rss_url' => 'https://www.premierleague.com/news/rss',
             'lang' => 'en',
+            'enabled' => false,
         ],
         [
             'name' => 'UEFA',

@@ -1,0 +1,29 @@
+Plesk Scheduled Task — your panel runs PHP, NOT bash.
+Error "Could not open input file: /bin/bash ..." = wrong task type.
+
+=== Step 1: Git pull (Plesk UI) ===
+Domains → 90plus.kz → Git → Pull
+
+=== Step 2: .env ===
+Add line (generate random string):
+DEPLOY_KEY=MySecretKey12345ChangeThis
+
+=== Step 3: Scheduled Task ===
+Type: "Run a PHP script" / "Выполнить PHP-скрипт"
+
+Script path (ONLY this path, no bash):
+/var/www/vhosts/90plus.kz/httpdocs/public/plesk-deploy.php
+
+Arguments / Parameters:
+MySecretKey12345ChangeThis
+(same value as DEPLOY_KEY in .env)
+
+=== Step 4: Log ===
+Read: httpdocs/storage/logs/cron-deploy.log
+
+=== Alternative: Fetch URL task ===
+Type: Fetch URL
+URL: https://90plus.kz/plesk-deploy.php?key=MySecretKey12345ChangeThis
+
+=== Do NOT use ===
+Command: /bin/bash ...  (Plesk treats it as PHP file path)

@@ -5,11 +5,22 @@
 
 2) Plesk → 90plus.kz → Scheduled Tasks → Add Task
 
-   Type:     Fetch a URL
+   Тип:      Fetch a URL  (НЕ «Run PHP script», НЕ «Run command»)
    URL:      https://90plus.kz/plesk-task.php?job=scheduler&key=ВАШ_DEPLOY_KEY
-   Schedule: Every 2 minutes  (каждые 2 минуты)
+   Расписание: Custom → */5 * * * *   (каждые 5 минут)
 
-3) Сохранить. Больше ничего вручную не нужно.
+   ВАЖНО: только ОДНА задача с этим URL. Вторую «парсер» удалите.
+
+3) Сохранить. Включить задачу (галочка «Active» / «Выполнять»).
+
+Проверка, что Plesk вообще вызывает сайт:
+   https://90plus.kz/plesk-task.php?job=cron-ping&key=ВАШ_KEY
+   → ответ: cron-ping OK
+   → файл: storage/logs/plesk-cron-hits.log (новые строки каждые 5 мин)
+
+Проверка worker вручную (1–2 мин в браузере, не в cron):
+   https://90plus.kz/plesk-task.php?job=worker&key=ВАШ_KEY
+   → в cron-scheduler.log: --- tick: premier-liga --- и т.д.
 
 Что делает scheduler автоматически:
   premier-liga      каждые 5 мин

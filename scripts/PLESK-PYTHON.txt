@@ -1,0 +1,61 @@
+90plus.kz — CRON через Python (рекомендуется)
+=============================================
+
+Почему Python: без HTTP, без 504, без worker-spawn.
+Скрипт сам вызывает: /opt/plesk/php/8.3/bin/php artisan ...
+
+1) Git pull / deploy на сервер
+
+2) Проверка в SSH или Plesk → Terminal (если есть):
+
+   cd /var/www/vhosts/018.kz/90plus.kz
+   python3 scripts/plesk_cron.py --status
+   python3 scripts/plesk_cron.py
+
+   Должно: scheduler: starting premier-liga (или articles, …)
+
+3) В .env (опционально, если php не находится сам):
+
+   PLESK_PHP=/opt/plesk/php/8.3/bin/php
+
+4) Plesk → 90plus.kz → Scheduled Tasks
+
+   УДАЛИТЕ старые задачи «Fetch URL» (?job=scheduler) — они больше не нужны.
+
+   Добавить ОДНУ задачу:
+
+   Task type:  Run a command
+   Command:    /usr/bin/python3 /var/www/vhosts/018.kz/90plus.kz/scripts/plesk_cron.py
+
+   (если python3 в другом месте — узнайте: which python3)
+
+   Schedule:   Custom → */5 * * * *
+
+   Run:        As root или as subscription user (как у других cron)
+
+5) Права:
+
+   chmod +x scripts/plesk_cron.py
+   storage/ и storage/logs — запись для пользователя веб/cron
+
+6) Логи:
+
+   storage/logs/cron-scheduler.log   — общий планировщик
+   storage/logs/cron-articles.log    — по задачам
+   storage/logs/cron-premier-liga.log
+   storage/app/plesk-scheduler-state.json — когда что запускалось
+
+7) Ручной запуск одной задачи:
+
+   python3 scripts/plesk_cron.py --job articles
+   python3 scripts/plesk_cron.py --job premier-liga
+
+Расписание (как раньше):
+  premier-liga   каждые 5 мин
+  articles       каждые 10 мин
+  standings      каждые 30 мин
+  world-cup      каждые 30 мин
+  clubs-daily    раз в день после 04:00
+  transfers      раз в день после 06:00
+
+plesk-task.php оставьте для deploy (?deploy=1) и refresh-config.

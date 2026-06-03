@@ -1,0 +1,29 @@
+/* Livesport Finder — как на https://www.flashscorekz.com/kz/ */
+
+@font-face {
+    font-family: 'Livesport Finder';
+    src: url('../fonts/livesport/LivesportFinderCyrillic-Regular_Static.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Livesport Finder';
+    src: url('../fonts/livesport/LivesportFinderCyrillic-Bold_Static.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Livesport Finder';
+    src: url('../fonts/livesport/LivesportFinderCyrillic-Extrabold.woff2') format('woff2');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --font: 'Livesport Finder', Arial, sans-serif;
+}

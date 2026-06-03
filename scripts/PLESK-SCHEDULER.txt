@@ -24,11 +24,12 @@
 
 Проверка в браузере (один раз):
   https://90plus.kz/plesk-task.php?job=scheduler&key=KEY
-  Ответ сразу: "scheduler: starting premier-liga" — это норма.
-  Парсер дорабатывает в фоне; не ждите долгой загрузки страницы.
+  Ответ за 1–2 с: "scheduler: dispatched" — Plesk не ждёт парсер.
+  Работа идёт в фоне (?job=worker). Лог: storage/logs/cron-scheduler.log
 
-504 Gateway Timeout: обновите scripts/plesk-scheduler-runner.php (git pull).
-  Scheduler запускает только ОДНУ задачу за вызов.
+504 в Plesk на scheduler URL: сделайте git pull (spawn worker).
+  Cron URL только ?job=scheduler — НЕ добавляйте ?job=worker в Plesk.
+  Scheduler запускает только ОДНУ задачу за вызов worker.
 
 Лог общий: storage/logs/cron-scheduler.log
 Логи задач: storage/logs/cron-articles.log и т.д.

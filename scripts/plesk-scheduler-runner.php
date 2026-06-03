@@ -100,13 +100,7 @@ return function (string $root, string $providedKey): int {
     arsort($due);
     $jobId = array_key_first($due);
 
-    if (PHP_SAPI !== 'cli') {
-        $early = require __DIR__.'/plesk-early-response.php';
-        $early("scheduler: starting {$jobId}\n");
-    } else {
-        echo "scheduler: starting {$jobId}\n";
-    }
-
+    echo "scheduler: starting {$jobId}\n";
     $log("--- tick: {$jobId} ---");
     $runJob = require __DIR__.'/plesk-artisan-runner.php';
     [$code] = $runJob($root, $jobId, $providedKey);

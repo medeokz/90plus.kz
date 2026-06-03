@@ -2,11 +2,11 @@
 ================================================================
 В .env должен быть DEPLOY_KEY=ваш-секрет (или CRON_KEY=тот же секрет)
 
-Базовый URL (document root = корень проекта, как у вас):
-  https://90plus.kz/plesk-cron.php?job=ИМЯ&key=ВАШ_СЕКРЕТ
+Используйте plesk-ping.php (файл уже на сервере):
 
-Если document root = public:
-  https://90plus.kz/plesk-cron.php?job=ИМЯ&key=ВАШ_СЕКРЕТ
+  https://90plus.kz/plesk-ping.php?job=ИМЯ&key=ВАШ_СЕКРЕТ
+
+(plesk-cron.php может дать 404 — это нормально, используйте ping)
 
 Деплой после git pull:
   https://90plus.kz/plesk-ping.php?deploy=1&key=ВАШ_СЕКРЕТ
@@ -28,10 +28,10 @@
 | Отслеж. матчи       | fixtures-tracked | */5 * * * *       |
 
 Пример URL для клубов (ежедневно в 4:00):
-https://90plus.kz/plesk-cron.php?job=clubs-daily&key=MySecretKey12345ChangeThis
+https://90plus.kz/plesk-ping.php?job=clubs-daily&key=MySecretKey12345ChangeThis
 
 Пример URL для новостей (каждый час):
-https://90plus.kz/plesk-cron.php?job=articles&key=MySecretKey12345ChangeThis
+https://90plus.kz/plesk-ping.php?job=articles&key=MySecretKey12345ChangeThis
 
 ----------------------------------------------------------------
 Тип задачи: Run a PHP script (если нет Fetch URL)

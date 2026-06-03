@@ -55,6 +55,25 @@ if (isset($_GET['refresh-config']) && (string) $_GET['refresh-config'] === '1') 
     exit($run($root));
 }
 
+if (isset($_GET['db-check']) && (string) $_GET['db-check'] === '1') {
+    $runner = $root.'/scripts/plesk-db-check.php';
+    if (! is_file($runner)) {
+        http_response_code(500);
+        echo "ERROR: missing scripts/plesk-db-check.php\n";
+        exit(1);
+    }
+    exit((int) $run($root));
+}
+    $runner = $root.'/scripts/plesk-config-refresh.php';
+    if (! is_file($runner)) {
+        http_response_code(500);
+        echo "ERROR: missing scripts/plesk-config-refresh.php\n";
+        exit(1);
+    }
+    $run = require $runner;
+    exit($run($root));
+}
+
 @mkdir($root.'/storage/logs', 0775, true);
 file_put_contents($root.'/storage/logs/ping.log', date('c')." plesk-task OK\n", FILE_APPEND);
 

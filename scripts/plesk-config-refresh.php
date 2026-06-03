@@ -40,6 +40,8 @@ return function (string $root): int {
     $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
     $kernel->bootstrap();
 
+    @unlink($root.'/bootstrap/cache/config.php');
+
     foreach (['config:clear', 'config:cache'] as $command) {
         try {
             $exit = $kernel->call($command);
@@ -51,7 +53,17 @@ return function (string $root): int {
         }
     }
 
+    $user = (string) config('database.connections.mysql.username');
+    $db = (string) config('database.connections.mysql.database');
+    $host = (string) config('database.connections.mysql.host');
     $log('--- config refresh done ---');
+    $log("Active config: host={$host} database={$db} username={$user}");
+
+    if ($user === '' || $user === 'root') {
+        $log('WARNING: username still empty/root — check .env DB_USERNAME on server');
+
+        return 1;
+    }
 
     return 0;
 };

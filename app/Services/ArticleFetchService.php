@@ -59,8 +59,15 @@ class ArticleFetchService
         $importedTotal = 0;
         $processed = 0;
 
+        Log::info('Article fetch batch starting', [
+            'batch_size' => $batchSize,
+            'start_index' => $index,
+            'total_sources' => $totalSources,
+        ]);
+
         for ($i = 0; $i < $batchSize; $i++) {
             $source = $enabled[($index + $i) % $totalSources];
+            Log::info('Hourly fetch starting source', ['source' => $source['name']]);
             $count = $this->fetchFromSourceOrSkip($source, 1, true, true);
             $importedTotal += $count;
             $processed++;
@@ -347,14 +354,23 @@ class ArticleFetchService
     private function fetchRss(array $source): \Illuminate\Http\Client\Response
     {
         $url = $source['rss_url'] ?? '';
-        $timeout = (int) ($source['rss_timeout'] ?? 60);
+        $timeout = (int) ($source['rss_timeout'] ?? config('football.article_fetch_rss_timeout', 25));
         $lastError = null;
+
+        $headers = [
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept' => 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7',
+            'Accept-Language' => ($source['lang'] ?? 'en') === 'ru' ? 'ru-RU,ru;q=0.9' : 'en-US,en;q=0.9',
+        ];
+        if (! empty($source['rss_referer'])) {
+            $headers['Referer'] = (string) $source['rss_referer'];
+        }
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
             try {
-                $response = Http::timeout($attempt === 1 ? $timeout : $timeout + 30)
-                    ->connectTimeout(20)
-                    ->withHeaders(['User-Agent' => 'Mozilla/5.0 (compatible; FootballKZ/1.0)'])
+                $response = Http::timeout($attempt === 1 ? $timeout : min($timeout + 15, 45))
+                    ->connectTimeout(15)
+                    ->withHeaders($headers)
                     ->get($url);
 
                 if ($response->successful()) {

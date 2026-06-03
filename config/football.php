@@ -102,6 +102,9 @@ return [
     */
     'article_fetch_batch_size' => 6,
 
+    /** Таймаут RSS по умолчанию (сек), если у источника нет rss_timeout */
+    'article_fetch_rss_timeout' => 25,
+
     'sources' => [
         // ——— Ағылшынша ———
         // BBC: с сервера KZ часто таймаут — включите enabled=true после стабильного канала
@@ -136,8 +139,9 @@ return [
         ],
         [
             'name' => 'CBS Sports',
-            'rss_url' => 'https://www.cbssports.com/rss/headlines/soccer',
+            'rss_url' => 'https://www.cbssports.com/rss/headlines/soccer/',
             'lang' => 'en',
+            'rss_referer' => 'https://www.cbssports.com/',
         ],
         // RSS 404 — включите, когда появится рабочий feed
         [
@@ -150,6 +154,8 @@ return [
             'name' => 'UEFA',
             'rss_url' => 'https://www.uefa.com/rssfeed/news/rss.xml',
             'lang' => 'en',
+            'rss_timeout' => 20,
+            'rss_referer' => 'https://www.uefa.com/',
         ],
         // RSS 404
         [

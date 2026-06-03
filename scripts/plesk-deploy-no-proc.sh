@@ -13,6 +13,7 @@
 
 set -euo pipefail
 
+# Must be httpdocs (where artisan lives), NOT /var/www/vhosts/90plus.kz/
 DEPLOY_PATH="${DEPLOY_PATH:-/var/www/vhosts/90plus.kz/httpdocs}"
 PHP_BIN="${PHP_BIN:-/opt/plesk/php/8.3/bin/php}"
 cd "$DEPLOY_PATH"

@@ -1,48 +1,34 @@
-Планировщик 90plus.kz — рабочие URL
-====================================
+90plus.kz — ОДНА задача в Plesk
+=================================
 
-Главный файл (document root = public):
+1) Git Pull на сервере (или загрузите новые scripts/)
 
-  https://90plus.kz/plesk-task.php?job=ИМЯ&key=ВАШ_DEPLOY_KEY
+2) Plesk → 90plus.kz → Scheduled Tasks → Add Task
 
-Deploy после git pull:
+   Type:     Fetch a URL
+   URL:      https://90plus.kz/plesk-task.php?job=scheduler&key=ВАШ_DEPLOY_KEY
+   Schedule: Every 2 minutes  (каждые 2 минуты)
 
-  https://90plus.kz/plesk-task.php?deploy=1&key=ВАШ_DEPLOY_KEY
+3) Сохранить. Больше ничего вручную не нужно.
 
-Почему /_plesk не работает: на сервере старый route:cache без этого маршрута.
-Deploy теперь делает route:clear (исправляет /_plesk тоже).
+Что делает scheduler автоматически:
+  premier-liga      каждые 2 мин
+  fixtures-tracked  каждые 5 мин
+  world-cup         каждые 15 мин
+  standings         каждые 30 мин
+  articles          каждый час
+  clubs-daily       раз в день после 04:00
+  transfers         раз в день после 06:00
 
-Быстрый фикс без git: в Files удалите bootstrap/cache/routes-v7.php
+Время суток — часовой пояс сервера (проверьте APP_TIMEZONE в .env).
 
-----------------------------------------------------------------
-Plesk → Scheduled Tasks → Fetch a URL
-----------------------------------------------------------------
+Проверка в браузере (один раз):
+  https://90plus.kz/plesk-task.php?job=scheduler&key=KEY
 
-Новости (каждый час):
-https://90plus.kz/plesk-task.php?job=articles&key=KEY
+Лог общий: storage/logs/cron-scheduler.log
+Логи задач: storage/logs/cron-articles.log и т.д.
 
-Клубы (04:00):
-https://90plus.kz/plesk-task.php?job=clubs-daily&key=KEY
+Deploy только после обновления кода:
+  https://90plus.kz/plesk-task.php?deploy=1&key=KEY
 
-Таблицы (30 мин):
-https://90plus.kz/plesk-task.php?job=standings&key=KEY
-
-Трансферы (06:00):
-https://90plus.kz/plesk-task.php?job=transfers&key=KEY
-
-ЧМ 2026 (15 мин):
-https://90plus.kz/plesk-task.php?job=world-cup&key=KEY
-
-ҚПЛ (2 мин):
-https://90plus.kz/plesk-task.php?job=premier-liga&key=KEY
-
-Live матчи (нагрузка!):
-https://90plus.kz/plesk-task.php?job=fixtures-live&key=KEY
-
-Матчи (5 мин):
-https://90plus.kz/plesk-task.php?job=fixtures-tracked&key=KEY
-
-Jobs: articles, clubs-daily, standings, transfers, world-cup,
-      premier-liga, fixtures-live, fixtures-tracked
-
-Логи: storage/logs/cron-*.log
+Отдельные job=... URL по-прежнему работают (для ручного запуска).

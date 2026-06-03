@@ -1,65 +1,48 @@
-Планировщик Plesk для 90plus.kz (без bash, без schedule:run)
-================================================================
-В .env должен быть DEPLOY_KEY=ваш-секрет (или CRON_KEY=тот же секрет)
+Планировщик 90plus.kz — рабочие URL
+====================================
 
-=== РАБОЧИЕ URL (через Laravel, document root = public) ===
+Главный файл (document root = public):
 
-Ping:    https://90plus.kz/_plesk?key=ВАШ_СЕКРЕТ
-Deploy:  https://90plus.kz/_plesk?deploy=1&key=ВАШ_СЕКРЕТ
-Cron:    https://90plus.kz/_plesk?job=articles&key=ВАШ_СЕКРЕТ
+  https://90plus.kz/plesk-task.php?job=ИМЯ&key=ВАШ_DEPLOY_KEY
 
-После git pull обязательно:
-  https://90plus.kz/_plesk?deploy=1&key=...  (обновит route:cache)
+Deploy после git pull:
 
-Старые plesk-ping.php / plesk-cron.php могут давать 404 — не используйте.
+  https://90plus.kz/plesk-task.php?deploy=1&key=ВАШ_DEPLOY_KEY
+
+Почему /_plesk не работает: на сервере старый route:cache без этого маршрута.
+Deploy теперь делает route:clear (исправляет /_plesk тоже).
+
+Быстрый фикс без git: в Files удалите bootstrap/cache/routes-v7.php
 
 ----------------------------------------------------------------
-Как добавить в Plesk: Domains → 90plus.kz → Scheduled Tasks → Add Task
-Тип: "Fetch a URL" (Получить URL) — самый простой вариант
+Plesk → Scheduled Tasks → Fetch a URL
 ----------------------------------------------------------------
-
-| Задача              | job=           | Расписание (cron)   |
-|---------------------|----------------|---------------------|
-| Клубы + страны      | clubs-daily    | 0 4 * * *  (04:00)  |
-| Трансферы           | transfers      | 0 6 * * *  (06:00)  |
-| Новости (статьи)    | articles       | 0 * * * *  (каждый час) |
-| Турнирные таблицы   | standings      | */30 * * * *        |
-| ЧМ 2026             | world-cup      | */15 * * * *        |
-| ҚПЛ / premier-liga  | premier-liga   | */2 * * * *         |
-| Live матчи          | fixtures-live  | * * * * * (каждую минуту — нагрузка!) |
-| Отслеж. матчи       | fixtures-tracked | */5 * * * *       |
-
-Клубы (04:00):
-https://90plus.kz/_plesk?job=clubs-daily&key=MySecretKey12345ChangeThis
 
 Новости (каждый час):
-https://90plus.kz/_plesk?job=articles&key=MySecretKey12345ChangeThis
+https://90plus.kz/plesk-task.php?job=articles&key=KEY
 
-----------------------------------------------------------------
-Тип задачи: Run a PHP script (если нет Fetch URL)
-----------------------------------------------------------------
-Run PHP script (если нет Fetch URL):
-  /var/www/vhosts/018.kz/90plus.kz/plesk-ping.php
-Arguments:
-  job=clubs-daily (не работает — лучше Fetch URL)
+Клубы (04:00):
+https://90plus.kz/plesk-task.php?job=clubs-daily&key=KEY
 
-----------------------------------------------------------------
-Логи
-----------------------------------------------------------------
-storage/logs/cron-clubs-daily.log
-storage/logs/cron-articles.log
-и т.д.
+Таблицы (30 мин):
+https://90plus.kz/plesk-task.php?job=standings&key=KEY
 
-----------------------------------------------------------------
-Рекомендуемый минимум для старта
-----------------------------------------------------------------
-1) clubs-daily — 1 раз в сутки (04:00)
-2) articles — каждый час
-3) standings — каждые 30 мин
+Трансферы (06:00):
+https://90plus.kz/plesk-task.php?job=transfers&key=KEY
 
-Остальное добавьте по необходимости (fixtures-live сильно грузит сервер).
+ЧМ 2026 (15 мин):
+https://90plus.kz/plesk-task.php?job=world-cup&key=KEY
 
-----------------------------------------------------------------
-PHP: увеличить max_execution_time для clubs-daily
-----------------------------------------------------------------
-Plesk → PHP Settings → max_execution_time = 300 (5 мин) для домена
+ҚПЛ (2 мин):
+https://90plus.kz/plesk-task.php?job=premier-liga&key=KEY
+
+Live матчи (нагрузка!):
+https://90plus.kz/plesk-task.php?job=fixtures-live&key=KEY
+
+Матчи (5 мин):
+https://90plus.kz/plesk-task.php?job=fixtures-tracked&key=KEY
+
+Jobs: articles, clubs-daily, standings, transfers, world-cup,
+      premier-liga, fixtures-live, fixtures-tracked
+
+Логи: storage/logs/cron-*.log

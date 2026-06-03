@@ -56,8 +56,8 @@ return function (string $root): int {
 
     foreach ([
         ['migrate', ['--force' => true]],
+        ['route:clear', []],
         ['config:cache', []],
-        ['route:cache', []],
         ['view:cache', []],
     ] as [$command, $args]) {
         try {

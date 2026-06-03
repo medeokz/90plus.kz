@@ -30,9 +30,9 @@ class PleskTaskController extends Controller
         );
 
         $body = "OK site root={$root}\n"
-            ."Deploy:  /_plesk?deploy=1&key=YOUR_KEY\n"
-            ."Cron:    /_plesk?job=articles&key=YOUR_KEY\n"
-            ."Jobs: articles, clubs-daily, standings, transfers, world-cup, premier-liga, fixtures-live, fixtures-tracked\n";
+            ."Use: /plesk-task.php (recommended)\n"
+            ."Deploy:  /plesk-task.php?deploy=1&key=YOUR_KEY\n"
+            ."Cron:    /plesk-task.php?job=articles&key=YOUR_KEY\n";
 
         return response($body, 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
     }

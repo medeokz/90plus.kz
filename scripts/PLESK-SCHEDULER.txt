@@ -2,14 +2,16 @@
 ================================================================
 В .env должен быть DEPLOY_KEY=ваш-секрет (или CRON_KEY=тот же секрет)
 
-Используйте plesk-ping.php (файл уже на сервере):
+=== РАБОЧИЕ URL (через Laravel, document root = public) ===
 
-  https://90plus.kz/plesk-ping.php?job=ИМЯ&key=ВАШ_СЕКРЕТ
+Ping:    https://90plus.kz/_plesk?key=ВАШ_СЕКРЕТ
+Deploy:  https://90plus.kz/_plesk?deploy=1&key=ВАШ_СЕКРЕТ
+Cron:    https://90plus.kz/_plesk?job=articles&key=ВАШ_СЕКРЕТ
 
-(plesk-cron.php может дать 404 — это нормально, используйте ping)
+После git pull обязательно:
+  https://90plus.kz/_plesk?deploy=1&key=...  (обновит route:cache)
 
-Деплой после git pull:
-  https://90plus.kz/plesk-ping.php?deploy=1&key=ВАШ_СЕКРЕТ
+Старые plesk-ping.php / plesk-cron.php могут давать 404 — не используйте.
 
 ----------------------------------------------------------------
 Как добавить в Plesk: Domains → 90plus.kz → Scheduled Tasks → Add Task
@@ -27,19 +29,19 @@
 | Live матчи          | fixtures-live  | * * * * * (каждую минуту — нагрузка!) |
 | Отслеж. матчи       | fixtures-tracked | */5 * * * *       |
 
-Пример URL для клубов (ежедневно в 4:00):
-https://90plus.kz/plesk-ping.php?job=clubs-daily&key=MySecretKey12345ChangeThis
+Клубы (04:00):
+https://90plus.kz/_plesk?job=clubs-daily&key=MySecretKey12345ChangeThis
 
-Пример URL для новостей (каждый час):
-https://90plus.kz/plesk-ping.php?job=articles&key=MySecretKey12345ChangeThis
+Новости (каждый час):
+https://90plus.kz/_plesk?job=articles&key=MySecretKey12345ChangeThis
 
 ----------------------------------------------------------------
 Тип задачи: Run a PHP script (если нет Fetch URL)
 ----------------------------------------------------------------
-Script:
-  /var/www/vhosts/018.kz/90plus.kz/plesk-cron.php
-Arguments (два через пробел):
-  clubs-daily MySecretKey12345ChangeThis
+Run PHP script (если нет Fetch URL):
+  /var/www/vhosts/018.kz/90plus.kz/plesk-ping.php
+Arguments:
+  job=clubs-daily (не работает — лучше Fetch URL)
 
 ----------------------------------------------------------------
 Логи

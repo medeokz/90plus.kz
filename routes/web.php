@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PleskTaskController;
 use App\Http\Controllers\ArticleCommentController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\ArticleReactionController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\CountryController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WorldCupController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/_plesk', [PleskTaskController::class, 'handle']);
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/article/{slug}', [ArticleController::class, 'show'])->name('articles.show');

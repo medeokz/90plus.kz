@@ -34,7 +34,7 @@ return function (string $root, string $providedKey): int {
     /** @var array<string, array{type: string, seconds?: int, at?: string, heavy?: bool}> */
     $schedule = [
         'premier-liga' => ['type' => 'interval', 'seconds' => 300],
-        'fixtures-tracked' => ['type' => 'interval', 'seconds' => 900],
+        // fixtures-tracked отключён (нагрузка на API / 429)
         'world-cup' => ['type' => 'interval', 'seconds' => 1800],
         'standings' => ['type' => 'interval', 'seconds' => 1800],
         'articles' => ['type' => 'interval', 'seconds' => 3600],

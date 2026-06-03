@@ -12,9 +12,9 @@
 3) Сохранить. Больше ничего вручную не нужно.
 
 Что делает scheduler автоматически:
-  premier-liga      каждые 2 мин
-  fixtures-tracked  каждые 5 мин
-  world-cup         каждые 15 мин
+  premier-liga      каждые 5 мин
+  world-cup         каждые 30 мин
+  (матчи /games — вручную: ?job=fixtures-tracked&key=KEY)
   standings         каждые 30 мин
   articles          каждый час
   clubs-daily       раз в день после 04:00

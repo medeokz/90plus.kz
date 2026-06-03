@@ -25,27 +25,21 @@ if (isset($_GET['job']) && $_GET['job'] !== '') {
     }
 
     if ($job === 'scheduler') {
-        $spawn = require $root.'/scripts/plesk-spawn-worker.php';
-        $spawned = $spawn($root, $key);
-
         $early = require $root.'/scripts/plesk-early-response.php';
-        if ($spawned) {
-            $early("scheduler: dispatched\n");
-            exit(0);
+        $early("scheduler: dispatched\n");
+
+        $spawn = require $root.'/scripts/plesk-spawn-worker.php';
+        if (! $spawn($root, $key)) {
+            $logFile = $root.'/storage/logs/cron-scheduler.log';
+            @mkdir(dirname($logFile), 0775, true);
+            @file_put_contents(
+                $logFile,
+                date('Y-m-d H:i:s')." ERROR: worker spawn failed (enable curl or allow_url_fopen)\n",
+                FILE_APPEND | LOCK_EX
+            );
         }
 
-        $logFile = $root.'/storage/logs/cron-scheduler.log';
-        @mkdir(dirname($logFile), 0775, true);
-        @file_put_contents($logFile, date('Y-m-d H:i:s')." WARN: worker spawn failed, running inline\n", FILE_APPEND | LOCK_EX);
-
-        $runner = $root.'/scripts/plesk-scheduler-runner.php';
-        if (! is_file($runner)) {
-            http_response_code(500);
-            echo "ERROR: missing scripts/plesk-scheduler-runner.php\n";
-            exit(1);
-        }
-        $run = require $runner;
-        exit($run($root, $key));
+        exit(0);
     }
 
     if ($job === 'worker') {
